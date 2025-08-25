@@ -1,45 +1,25 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Live Screen Share</title>
+  <meta charset="UTF-8">
+  <title>Emoji Viewer</title>
+  <style>
+    body { background:#111; color:white; font-family:monospace; text-align:center; }
+    pre { font-size:2px; line-height:2px; white-space:pre; }
+  </style>
 </head>
 <body>
-<h1>Screen Share</h1>
-<video id="screen" autoplay playsinline></video>
+<h1>👀 Emoji Viewer</h1>
+<pre id="emoji">Waiting for broadcast...</pre>
 
+<script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
 <script>
-const ws = new WebSocket(`ws://${location.host}`);
-const pc = new RTCPeerConnection();
-const videoEl = document.getElementById("screen");
+const peer = new Peer(); // random ID
+const conn = peer.connect('broadcaster');
+const emojiPre = document.getElementById('emoji');
 
-pc.ontrack = (event) => {
-    videoEl.srcObject = event.streams[0];
-};
-
-ws.onopen = () => {
-    ws.send(JSON.stringify({ type: "viewer", id: Math.random().toString(36).substring(2) }));
-};
-
-ws.onmessage = async (msg) => {
-    const data = JSON.parse(msg.data);
-
-    if(data.type === "offer") {
-        await pc.setRemoteDescription(data.offer);
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        ws.send(JSON.stringify({ type: "answer", answer: answer, id: data.id }));
-    }
-
-    if(data.type === "candidate") {
-        await pc.addIceCandidate(data.candidate);
-    }
-};
-
-pc.onicecandidate = (event) => {
-    if(event.candidate){
-        ws.send(JSON.stringify({ type: "candidate", candidate: event.candidate, target: 'broadcaster' }));
-    }
-};
+conn.on('open', () => console.log('Connected to broadcaster'));
+conn.on('data', data => { emojiPre.textContent = data; });
 </script>
 </body>
 </html>
