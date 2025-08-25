@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Broadcast Screen</title>
+</head>
+<body>
+<h1>Broadcast Your Screen</h1>
+
+<script>
+const ws = new WebSocket(`ws://${location.host}`);
+const pc = new RTCPeerConnection();
+
+ws.onopen = () => {
+    ws.send(JSON.stringify({ type: "broadcaster" }));
+};
+
+async function startBroadcast() {
+    // Capture screen only
+    const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+    stream.getTracks().forEach(track => pc.addTrack(track, stream));
+
+    pc.onicecandidate = (event) => {
+        if(event.candidate){
+            ws.send(JSON.stringify({ type: "candidate", candidate: event.candidate, target: 'viewer' }));
+        }
+    };
+}
+
+startBroadcast();
+</script>
+</body>
+</html>
