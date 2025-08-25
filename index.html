@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Live Screen Share</title>
+</head>
+<body>
+<h1>Screen Share</h1>
+<video id="screen" autoplay playsinline></video>
+
+<script>
+const ws = new WebSocket(`ws://${location.host}`);
+const pc = new RTCPeerConnection();
+const videoEl = document.getElementById("screen");
+
+pc.ontrack = (event) => {
+    videoEl.srcObject = event.streams[0];
+};
+
+ws.onopen = () => {
+    ws.send(JSON.stringify({ type: "viewer", id: Math.random().toString(36).substring(2) }));
+};
+
+ws.onmessage = async (msg) => {
+    const data = JSON.parse(msg.data);
+
+    if(data.type === "offer") {
+        await pc.setRemoteDescription(data.offer);
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        ws.send(JSON.stringify({ type: "answer", answer: answer, id: data.id }));
+    }
+
+    if(data.type === "candidate") {
+        await pc.addIceCandidate(data.candidate);
+    }
+};
+
+pc.onicecandidate = (event) => {
+    if(event.candidate){
+        ws.send(JSON.stringify({ type: "candidate", candidate: event.candidate, target: 'broadcaster' }));
+    }
+};
+</script>
+</body>
+</html>
